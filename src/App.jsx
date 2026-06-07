@@ -11,7 +11,7 @@ export default function App(){
   const[dias,setDias]=useState([]);
   const[err,setErr]=useState(null);
   const[ok,setOk]=useState(null);
-  const[data,setData]=useState({horasTrabajadas:186.34,horasExtra:0,horasNocturnas:0,domingosBloqueados:0,dietasCompletas:0,mediasDietas:0,diasVacaciones:0,primaResp:250,primaCalidad:400,anticipo:0});
+  const[data,setData]=useState({horasTrabajadas:0,horasExtra:0,horasNocturnas:0,domingosBloqueados:0,dietasCompletas:0,mediasDietas:0,diasVacaciones:0,primaResp:250,primaCalidad:400,anticipo:0});
   const handleFiles=(e)=>{const files=Array.from(e.target.files);files.forEach(f=>{const r=new FileReader();r.onload=(ev)=>setImgs(prev=>[...prev,{url:URL.createObjectURL(f),b64:ev.target.result.split(",")[1]}]);r.readAsDataURL(f);});setErr(null);setOk(null);};
   const analizarTodas=async()=>{
     if(!imgs.length)return;
@@ -31,6 +31,7 @@ export default function App(){
     }else if(!err){setErr("No se detectaron días. Comprueba las fotos.");}
     setImgs([]);setAnalizando(false);
   };
+  useEffect(()=>{if(!dias.length)return;const t=tot();setData(prev=>({...prev,horasTrabajadas:parseFloat(t.tht.toFixed(2)),dietasCompletas:t.dc,mediasDietas:t.dm}));},[dias]);
   const tot=()=>{const t=dias.filter(d=>!d.esDescanso);return{tht:t.reduce((s,d)=>s+h2d(d.THT),0),noc:t.reduce((s,d)=>s+h2d(d.horasNocturnas),0),dc:t.filter(d=>d.dieta==="completa").length,dm:t.filter(d=>d.dieta==="media").length,km:t.reduce((s,d)=>s+(parseInt(d.totKm)||0),0)};};
   const calcN=(d)=>{const h=parseFloat(d.horasTrabajadas)||0,hex=parseFloat(d.horasExtra)||0,noche=parseFloat(d.horasNocturnas)||0,dom=parseFloat(d.domingosBloqueados)||0,dF=parseFloat(d.dietasCompletas)||0,dH=parseFloat(d.mediasDietas)||0,pR=parseFloat(d.primaResp)||0,pC=parseFloat(d.primaCalidad)||0,ant=parseFloat(d.anticipo)||0;const base=h*T.tasaBase,hexB=hex*T.tasaHex25,subBase=base+hexB,hexC=hex*T.tasaHex50,majN=noche*T.majNoche,majD=dom*T.majDomingo,bruto=subBase+hexC+majN+majD+pR+pC,bc=bruto*(1-T.abatement),ss=T.ss,deds=[bc*ss.salud,bc*ss.comp,bc*ss.jubP,bc*ss.jubD,bc*ss.compT1,bc*ss.conv],totDed=deds.reduce((s,v)=>s+v,0),reem=dF*T.dietaFull+dH*T.dietaHalf,total=bruto-totDed+reem;return{base,hexB,subBase,hexC,majN,majD,bruto,bc,deds,totDed,reem,total,neto:total-ant};};
   const to=tot();const nom=calcN(data);
