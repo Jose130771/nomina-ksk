@@ -7,31 +7,45 @@ export default async function handler(req, res) {
   try {
     const { image, mediaType } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
-    const prompt = `Eres un asistente que lee apuntes de un camionero francés. Lee con MÁXIMA PRECISIÓN.
+    const prompt = `Eres un asistente que lee apuntes de un camionero francés. LEE SOLO los días anotados, NO inventes días.
 
 SISTEMA DE NOTACIÓN (CRÍTICO):
 ═══════════════════════════════════════════════════════════════════
-🔵 VOLANTE (círculo): 8:40 → 20:59 = horas CONDUCCIÓN (ToTH en apuntes)
-🔨 MARTILLO: horas CARGA/DESCARGA (THT en apuntes = SOLO martillo, SIN conducción)
+🔵 VOLANTE (círculo): 8:40 → 20:59 = horas CONDUCCIÓN (ToTH)
+🔨 MARTILLO: horas CARGA/DESCARGA (THT = SOLO martillo)
 D: Descanso diario entre días
-ToTkm = km del día (el número que el camionero calcula)
+ToTkm = km del día
 ToTH = horas conducción SOLAMENTE
 THT = horas martillo SOLAMENTE (NO incluye conducción)
-TOTAL = ToTH + THT (aparece en las LÍNEAS DOBLES que unen ambos conceptos)
+TOTAL = ToTH + THT (aparece en LÍNEAS DOBLES)
 THS = horas acumuladas semana
 Bisem = horas acumuladas bisemanal (max 90h)
 DD = descanso diario (11h mínimo)
-DS = descanso semanal (35h mínimo, normalmente fin de semana)
-Casa = día en casa = sin dieta
+DS = descanso semanal (fin de semana)
 ═══════════════════════════════════════════════════════════════════
 
-CRÍTICO PARA DIETAS:
-- Pernocta = pasa la noche fuera (línea D cruza a día siguiente) = DIETA COMPLETA (55€)
-- Sin pernocta = regresa a casa o descanso en casa = SIN DIETA
-- Pernocta parcial = MEDIA DIETA (25€)
+TIPOS DE DESCANSO (CRÍTICO PARA DIETAS):
+1. BLOQUE (descanso reducido EN CAMIÓN):
+   - Fin de semana: ves círculo/conducción ANTES y DESPUÉS
+   - DS pequeño (24h, 33h, 35h, etc.) EN EL CAMIÓN
+   - DIETA COMPLETA (55€) - come EN el camión
+   - CALCULA: recuperacion = 45h - DS (ej: 45-33h16 = 11h44)
 
-EXTRAE TODOS LOS DÍAS. SOLO JSON sin markdown, sin backticks:
-{"dias":[{"fecha":"DD/MM/AA","diaSemana":"Lunes","lugar":"ciudad","totKm":0,"totH":"8h30","martillo":"1h20","totalDia":"9h50","THS":"16h02","Bisem":"42h31","DD":"11h06","dieta":"completa","horasNocturnas":"0h00","esDescanso":false,"pernocta":true}]}`;
+2. PERNOCTA FUERA (D cruza a día siguiente):
+   - D: 20:00 → 6:00 (pasa la noche fuera del camión)
+   - DIETA COMPLETA (55€)
+
+3. DESCANSO EN CASA (SIN apuntes):
+   - Faltan días entre anotaciones = está EN CASA
+   - SIN DIETA (come en casa)
+   - Se usa para recuperar horas del bloque
+
+4. CONDUCCIÓN + regresa a casa (NO hay D que cruza):
+   - Conduce, no hay pernocta
+   - SIN DIETA (vuelve a casa)
+
+EXTRAE SOLO LOS DÍAS ANOTADOS. NO INVENTES DÍAS. SOLO JSON sin markdown:
+{"dias":[{"fecha":"DD/MM/AA","diaSemana":"Sábado","lugar":"ciudad","totKm":533,"totH":"6h50","martillo":"1h58","totalDia":"8h48","THS":"38h25","DS":"35h16","DD":"35h16","tipoDescanso":"bloque","recuperacion":"9h44","dieta":"completa","esDescanso":true}]}`;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
