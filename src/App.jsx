@@ -19,7 +19,7 @@ export default function App(){
     let nuevos=[];
     for(const img of imgs){
       try{
-        const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:img.b64})});
+        const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:img.b64, mediaType: img.type})});
         if(!res.ok)throw new Error(`HTTP ${res.status}: ${await res.text()}`);
         const p=await res.json();
         if(p.dias)nuevos=[...nuevos,...p.dias];
