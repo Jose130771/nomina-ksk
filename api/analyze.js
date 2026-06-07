@@ -48,7 +48,7 @@ Formato JSON requerido:
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-5',
+        model: 'claude-opus-4-8',
         max_tokens: 4096,
         messages: [{
           role: 'user',
