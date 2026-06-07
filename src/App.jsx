@@ -4,15 +4,18 @@ const T={tasaBase:14.0,tasaHex25:17.5,tasaHex50:21.1848,majNoche:2.486,majDoming
 const h2d=(s)=>{if(!s)return 0;const m=s.toString().match(/(\d+)h(\d+)?/i);if(m)return parseInt(m[1])+(parseInt(m[2]||0))/60;return parseFloat(s)||0;};
 const d2h=(d)=>{const h=Math.floor(Math.abs(d));const m=Math.round((Math.abs(d)-h)*60);return`${h}h${m.toString().padStart(2,"0")}`;};
 const fmt=(n)=>n.toFixed(2).replace(".",",")+"\u00a0€";
+const INIT_DATA={horasTrabajadas:0,horasExtra:0,horasNocturnas:0,domingosBloqueados:0,dietasCompletas:0,mediasDietas:0,diasVacaciones:0,primaResp:250,primaCalidad:400,anticipo:0};
 export default function App(){
   const[tab,setTab]=useState("fotos");
   const[imgs,setImgs]=useState([]);
   const[analizando,setAnalizando]=useState(false);
-  const[dias,setDias]=useState([]);
+  const[dias,setDias]=useState(()=>{try{const s=localStorage.getItem("ksk_dias");return s?JSON.parse(s):[]}catch{return[];}});
   const[err,setErr]=useState(null);
   const[ok,setOk]=useState(null);
   const[editDia,setEditDia]=useState(null);
-  const[data,setData]=useState({horasTrabajadas:0,horasExtra:0,horasNocturnas:0,domingosBloqueados:0,dietasCompletas:0,mediasDietas:0,diasVacaciones:0,primaResp:250,primaCalidad:400,anticipo:0});
+  const[data,setData]=useState(()=>{try{const s=localStorage.getItem("ksk_data");return s?JSON.parse(s):INIT_DATA}catch{return INIT_DATA;}});
+  useEffect(()=>{try{localStorage.setItem("ksk_dias",JSON.stringify(dias));}catch{};},[dias]);
+  useEffect(()=>{try{localStorage.setItem("ksk_data",JSON.stringify(data));}catch{};},[data]);
   const handleFiles=(e)=>{const files=Array.from(e.target.files);files.forEach(f=>{const r=new FileReader();r.onload=(ev)=>setImgs(prev=>[...prev,{url:URL.createObjectURL(f),b64:ev.target.result.split(",")[1],type:f.type||'image/jpeg'}]);r.readAsDataURL(f);});setErr(null);setOk(null);};
   const analizarTodas=async()=>{
     if(!imgs.length)return;
@@ -46,6 +49,7 @@ export default function App(){
     const total=bruto-totDed+reem;
     return{salBase,salEquiv,sousTotal,hexC,majN,majD,bruto,bc,deds,totDed,exo,reem,total,neto:total-ant};
   };
+  const nuevoMes=()=>{if(!confirm("¿Borrar todos los días y empezar nuevo mes?"))return;setDias([]);setData(INIT_DATA);setOk(null);setErr(null);};
   const actualizarDia=(fecha,campo,valor)=>setDias(prev=>prev.map(d=>d.fecha===fecha?{...d,[campo]:valor}:d));
   const to=tot();const nom=calcN(data);
   const Row=({label,value,bold,color})=>(<div style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:11,color:bold?C.accent:C.muted}}>{label}</span><span style={{fontSize:11,color:color||C.text,fontWeight:bold?"bold":"normal"}}>{fmt(value)}</span></div>);
@@ -54,7 +58,10 @@ export default function App(){
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Courier New',monospace",color:C.text,paddingBottom:80}}>
       <div style={{background:"linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)",padding:"18px 16px 14px",borderBottom:`2px solid ${C.accent}`}}>
         <div style={{fontSize:10,color:C.accent,letterSpacing:4,marginBottom:3}}>KSK TRANSPORT INTERNATIONAL</div>
-        <div style={{fontSize:21,fontWeight:"bold"}}>🚛 MI NÓMINA</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:21,fontWeight:"bold"}}>🚛 MI NÓMINA</div>
+          <div style={{textAlign:"right"}}><div style={{fontSize:11,color:C.green,fontWeight:"bold"}}>{d2h(to.tht)} trabajadas</div><div style={{fontSize:13,color:C.accent,fontWeight:"bold"}}>{fmt(nom.neto)} estimado</div></div>
+        </div>
         <div style={{fontSize:10,color:C.muted,marginTop:2}}>ROTH Iosif — Chauffeur Routier — 150M</div>
       </div>
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card}}>
@@ -63,7 +70,10 @@ export default function App(){
       <div style={{padding:16}}>
         {tab==="fotos"&&(<div>
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:16,marginBottom:16}}>
-            <div style={{fontSize:12,color:C.accent,marginBottom:14,letterSpacing:2}}>SUBIR FOTOS DE APUNTES</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:12,color:C.accent,letterSpacing:2}}>SUBIR FOTOS DE APUNTES</div>
+              <button onClick={nuevoMes} style={{padding:"6px 12px",background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,color:C.red,fontFamily:"inherit",fontSize:10,cursor:"pointer"}}>🗑 NUEVO MES</button>
+            </div>
             <label style={{display:"block",padding:"18px 16px",border:`2px dashed ${C.accent}`,borderRadius:10,textAlign:"center",cursor:"pointer",color:C.accent,fontSize:13,letterSpacing:1}}>
               📷 ELEGIR FOTO(S)
               <input type="file" accept="image/*" multiple onChange={handleFiles} style={{position:"absolute",opacity:0,width:"1px",height:"1px"}}/>
