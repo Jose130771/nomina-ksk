@@ -5,6 +5,7 @@ const h2d=(s)=>{if(!s)return 0;const m=s.toString().match(/(\d+)h(\d+)?/i);if(m)
 const d2h=(d)=>{const h=Math.floor(Math.abs(d));const m=Math.round((Math.abs(d)-h)*60);return`${h}h${m.toString().padStart(2,"0")}`;};
 const fmt=(n)=>n.toFixed(2).replace(".",",")+"\u00a0€";
 const INIT_DATA={horasTrabajadas:0,horasExtra:0,horasNocturnas:0,domingosBloqueados:0,dietasCompletas:0,mediasDietas:0,diasVacaciones:0,primaResp:250,primaCalidad:400,anticipo:0};
+const MESES_ES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 export default function App(){
   const[tab,setTab]=useState("fotos");
   const[imgs,setImgs]=useState([]);
@@ -14,8 +15,25 @@ export default function App(){
   const[ok,setOk]=useState(null);
   const[editDia,setEditDia]=useState(null);
   const[data,setData]=useState(()=>{try{const s=localStorage.getItem("ksk_data");return s?JSON.parse(s):INIT_DATA}catch{return INIT_DATA;}});
+  const[historial,setHistorial]=useState({});
+  const[mesSel,setMesSel]=useState(null);
+  const[guardando,setGuardando]=useState(false);
+  const now=new Date();
+  const[mesActual,setMesActual]=useState(`${MESES_ES[now.getMonth()]} ${now.getFullYear()}`);
   useEffect(()=>{try{localStorage.setItem("ksk_dias",JSON.stringify(dias));}catch{};},[dias]);
   useEffect(()=>{try{localStorage.setItem("ksk_data",JSON.stringify(data));}catch{};},[data]);
+  useEffect(()=>{cargarHistorial();},[]);
+  const cargarHistorial=async()=>{try{const r=await fetch("/api/meses");const d=await r.json();setHistorial(d||{});}catch{}};
+  const guardarMes=async()=>{
+    if(!dias.length)return;
+    setGuardando(true);
+    try{
+      await fetch("/api/meses",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mes:mesActual,dias,data})});
+      await cargarHistorial();
+      setOk(`✅ Mes "${mesActual}" guardado en la nube`);
+    }catch(e){setErr("Error guardando: "+e.message);}
+    setGuardando(false);
+  };
   const handleFiles=(e)=>{const files=Array.from(e.target.files);files.forEach(f=>{const r=new FileReader();r.onload=(ev)=>setImgs(prev=>[...prev,{url:URL.createObjectURL(f),b64:ev.target.result.split(",")[1],type:f.type||'image/jpeg'}]);r.readAsDataURL(f);});setErr(null);setOk(null);};
   const analizarTodas=async()=>{
     if(!imgs.length)return;
@@ -35,7 +53,7 @@ export default function App(){
     }else if(!err){setErr("No se detectaron días. Comprueba las fotos.");}
     setImgs([]);setAnalizando(false);
   };
-  const tot=()=>{const t=dias.filter(d=>!d.esDescanso);return{tht:t.reduce((s,d)=>s+h2d(d.THT),0),noc:t.reduce((s,d)=>s+h2d(d.horasNocturnas),0),dc:t.filter(d=>d.dieta==="completa").length,dm:t.filter(d=>d.dieta==="media").length,km:t.reduce((s,d)=>s+(parseInt(d.totKm)||0),0)};};
+  const tot=(d=dias)=>{const t=d.filter(x=>!x.esDescanso);return{tht:t.reduce((s,x)=>s+h2d(x.THT),0),noc:t.reduce((s,x)=>s+h2d(x.horasNocturnas),0),dc:t.filter(x=>x.dieta==="completa").length,dm:t.filter(x=>x.dieta==="media").length,km:t.reduce((s,x)=>s+(parseInt(x.totKm)||0),0)};};
   useEffect(()=>{if(!dias.length)return;const t=tot();const thtTotal=t.tht;const hexExtra=Math.max(0,thtTotal-T.hEquivMax);setData(prev=>({...prev,horasTrabajadas:parseFloat(Math.min(thtTotal,T.hEquivMax).toFixed(2)),horasExtra:parseFloat(hexExtra.toFixed(2)),horasNocturnas:parseFloat(t.noc.toFixed(2)),dietasCompletas:t.dc,mediasDietas:t.dm}));},[dias]);
   const calcN=(d)=>{
     const hTotal=parseFloat(d.horasTrabajadas)||0,hex=parseFloat(d.horasExtra)||0,noche=parseFloat(d.horasNocturnas)||0,dom=parseFloat(d.domingosBloqueados)||0,dF=parseFloat(d.dietasCompletas)||0,dH=parseFloat(d.mediasDietas)||0,pR=parseFloat(d.primaResp)||0,pC=parseFloat(d.primaCalidad)||0,ant=parseFloat(d.anticipo)||0;
@@ -54,6 +72,7 @@ export default function App(){
   const to=tot();const nom=calcN(data);
   const Row=({label,value,bold,color})=>(<div style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:11,color:bold?C.accent:C.muted}}>{label}</span><span style={{fontSize:11,color:color||C.text,fontWeight:bold?"bold":"normal"}}>{fmt(value)}</span></div>);
   const Inp=({label,campo,dia,tipo="text"})=>(<div><div style={{fontSize:9,color:C.muted,marginBottom:2}}>{label}</div><input type={tipo} value={dia[campo]??''} onChange={e=>actualizarDia(dia.fecha,campo,e.target.value)} style={{width:"100%",padding:"6px 8px",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:4,color:C.text,fontFamily:"inherit",fontSize:11,boxSizing:"border-box"}}/></div>);
+  const mesesGuardados=Object.keys(historial).sort().reverse();
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Courier New',monospace",color:C.text,paddingBottom:80}}>
       <div style={{background:"linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)",padding:"18px 16px 14px",borderBottom:`2px solid ${C.accent}`}}>
@@ -64,8 +83,8 @@ export default function App(){
         </div>
         <div style={{fontSize:10,color:C.muted,marginTop:2}}>ROTH Iosif — Chauffeur Routier — 150M</div>
       </div>
-      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card}}>
-        {[{id:"fotos",label:"📸 FOTOS"},{id:"dias",label:`📋 DÍAS (${dias.filter(d=>!d.esDescanso).length})`},{id:"nomina",label:"💶 NÓMINA"}].map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"12px 4px",border:"none",background:"transparent",color:tab===t.id?C.accent:C.muted,borderBottom:tab===t.id?`2px solid ${C.accent}`:"2px solid transparent",fontFamily:"inherit",fontSize:11,fontWeight:"bold",letterSpacing:1,cursor:"pointer"}}>{t.label}</button>))}
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card,overflowX:"auto"}}>
+        {[{id:"fotos",label:"📸 FOTOS"},{id:"dias",label:`📋 DÍAS (${dias.filter(d=>!d.esDescanso).length})`},{id:"nomina",label:"💶 NÓMINA"},{id:"historial",label:`📅 HISTORIAL (${mesesGuardados.length})`}].map(t=>(<button key={t.id} onClick={()=>{setMesSel(null);setTab(t.id);}} style={{flexShrink:0,padding:"12px 10px",border:"none",background:"transparent",color:tab===t.id?C.accent:C.muted,borderBottom:tab===t.id?`2px solid ${C.accent}`:"2px solid transparent",fontFamily:"inherit",fontSize:10,fontWeight:"bold",letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap"}}>{t.label}</button>))}
       </div>
       <div style={{padding:16}}>
         {tab==="fotos"&&(<div>
@@ -119,7 +138,7 @@ export default function App(){
                 <Inp label="Km totales" campo="totKm" dia={d} tipo="number"/>
                 <Inp label="ToTH (conducción)" campo="ToTH" dia={d}/>
                 <Inp label="THT martillo" campo="THT_martillo" dia={d}/>
-                <Inp label="THT total (ToTH+martillo)" campo="THT" dia={d}/>
+                <Inp label="THT total" campo="THT" dia={d}/>
                 <Inp label="H. nocturnas" campo="horasNocturnas" dia={d}/>
                 <Inp label="THS acum. semana" campo="THS" dia={d}/>
                 <Inp label="DD descanso diario" campo="DD" dia={d}/>
@@ -138,7 +157,15 @@ export default function App(){
         </div>)}
         {tab==="nomina"&&(<div>
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:16,marginBottom:16}}>
-            <div style={{fontSize:12,color:C.accent,marginBottom:12,letterSpacing:2}}>⚙️ DATOS DEL MES</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:12,color:C.accent,letterSpacing:2}}>⚙️ DATOS DEL MES</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input value={mesActual} onChange={e=>setMesActual(e.target.value)} style={{padding:"6px 8px",background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,color:C.accent,fontFamily:"inherit",fontSize:11,width:140}}/>
+                <button onClick={guardarMes} disabled={guardando} style={{padding:"6px 12px",background:C.green,border:"none",borderRadius:6,color:"#000",fontFamily:"inherit",fontSize:11,fontWeight:"bold",cursor:"pointer"}}>
+                  {guardando?"⏳":"💾 GUARDAR"}
+                </button>
+              </div>
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               {[{key:"horasTrabajadas",label:"Horas base (≤186.34h)"},{key:"horasExtra",label:"Horas extra 50%"},{key:"horasNocturnas",label:"H. nocturnas"},{key:"domingosBloqueados",label:"Domingos bloq."},{key:"dietasCompletas",label:"Dietas completas"},{key:"mediasDietas",label:"Medias dietas"},{key:"diasVacaciones",label:"Días vacaciones"},{key:"primaResp",label:"Prima Resp. €"},{key:"primaCalidad",label:"Prima Calidad €"},{key:"anticipo",label:"Anticipo €"}].map(({key,label})=>(<div key={key}><div style={{fontSize:10,color:C.muted,marginBottom:3}}>{label}</div><input type="number" value={data[key]} onChange={e=>setData(prev=>({...prev,[key]:e.target.value}))} style={{width:"100%",padding:"8px 10px",background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,color:C.accent,fontFamily:"inherit",fontSize:13,boxSizing:"border-box"}}/></div>))}
             </div>
@@ -167,6 +194,44 @@ export default function App(){
             <div style={{fontSize:36,fontWeight:"bold",color:"#fff"}}>{fmt(nom.neto)}</div>
             <div style={{fontSize:11,color:C.green,marginTop:6}}>Estimación ±50€ respecto a la nómina real</div>
           </div>
+        </div>)}
+        {tab==="historial"&&(<div>
+          {mesesGuardados.length===0?(<div style={{textAlign:"center",color:C.muted,padding:40,fontSize:13}}>No hay meses guardados aún.<br/>Ve a NÓMINA → 💾 GUARDAR</div>):
+          mesSel?(<div>
+            <button onClick={()=>setMesSel(null)} style={{marginBottom:12,padding:"8px 14px",background:C.surface,border:`1px solid ${C.accent}`,borderRadius:8,color:C.accent,fontFamily:"inherit",fontSize:11,cursor:"pointer"}}>← VOLVER AL HISTORIAL</button>
+            {(()=>{const m=historial[mesSel];const n=calcN(m.data);const t=tot(m.dias);return(<div>
+              <div style={{background:C.card,border:`1px solid ${C.accent}`,borderRadius:12,padding:16,marginBottom:12}}>
+                <div style={{fontSize:14,color:C.accent,fontWeight:"bold",marginBottom:4}}>{mesSel}</div>
+                <div style={{fontSize:10,color:C.muted}}>Guardado: {new Date(m.guardado).toLocaleDateString("es")}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:12}}>
+                  <div style={{background:C.surface,borderRadius:8,padding:10}}><div style={{fontSize:10,color:C.muted}}>Horas</div><div style={{fontSize:16,color:C.green,fontWeight:"bold"}}>{d2h(t.tht)}</div></div>
+                  <div style={{background:C.surface,borderRadius:8,padding:10}}><div style={{fontSize:10,color:C.muted}}>Km</div><div style={{fontSize:16,color:C.blue,fontWeight:"bold"}}>{t.km.toLocaleString("es")}</div></div>
+                  <div style={{background:C.surface,borderRadius:8,padding:10}}><div style={{fontSize:10,color:C.muted}}>Dietas</div><div style={{fontSize:16,color:C.accent,fontWeight:"bold"}}>{t.dc} días</div></div>
+                  <div style={{background:C.surface,borderRadius:8,padding:10}}><div style={{fontSize:10,color:C.muted}}>Anticipo</div><div style={{fontSize:16,color:C.red,fontWeight:"bold"}}>{fmt(parseFloat(m.data.anticipo)||0)}</div></div>
+                </div>
+              </div>
+              <div style={{background:"linear-gradient(135deg,#064e3b,#065f46)",border:`2px solid ${C.green}`,borderRadius:14,padding:20,textAlign:"center",marginBottom:12}}>
+                <div style={{fontSize:11,color:C.green,letterSpacing:2}}>NETO ESTIMADO</div>
+                <div style={{fontSize:32,fontWeight:"bold",color:"#fff"}}>{fmt(n.neto)}</div>
+                <div style={{fontSize:11,color:C.green,marginTop:4}}>Bruto: {fmt(n.bruto)} · Deduc: {fmt(n.totDed)}</div>
+              </div>
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:12}}>
+                <div style={{fontSize:11,color:C.accent,marginBottom:8,fontWeight:"bold"}}>DÍAS DEL MES ({m.dias.filter(d=>!d.esDescanso).length} trabajados)</div>
+                {m.dias.map(d=>(<div key={d.fecha} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.border}`}}>
+                  <div><span style={{color:C.accent,fontSize:11,fontWeight:"bold"}}>{d.fecha}</span><span style={{color:C.muted,fontSize:10,marginLeft:6}}>{d.diaSemana}</span></div>
+                  <div style={{textAlign:"right"}}><span style={{color:C.green,fontSize:11}}>{d.THT}</span>{d.dieta==="completa"&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>🍽</span>}</div>
+                </div>))}
+              </div>
+            </div>);})()}
+          </div>):(<div>
+            <div style={{fontSize:12,color:C.accent,marginBottom:12,letterSpacing:2}}>📅 MESES GUARDADOS</div>
+            {mesesGuardados.map(mes=>{const m=historial[mes];const n=calcN(m.data);const t=tot(m.dias);return(<div key={mes} onClick={()=>setMesSel(mes)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:14,marginBottom:8,cursor:"pointer"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><div style={{color:C.accent,fontWeight:"bold",fontSize:13}}>{mes}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{m.dias.filter(d=>!d.esDescanso).length} días · {t.km.toLocaleString("es")} km · {t.dc} dietas</div></div>
+                <div style={{textAlign:"right"}}><div style={{color:C.green,fontSize:16,fontWeight:"bold"}}>{fmt(n.neto)}</div><div style={{color:C.muted,fontSize:10}}>neto est.</div></div>
+              </div>
+            </div>);})}
+          </div>)}
         </div>)}
       </div>
     </div>
