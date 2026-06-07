@@ -55,7 +55,7 @@ EXTRAE SOLO LOS DÍAS ANOTADOS. NO INVENTES DÍAS. SOLO JSON sin markdown:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
+        max_tokens: 4096,
         messages: [{
           role: 'user',
           content: [
