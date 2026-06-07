@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 const C={bg:"#0a0f1e",card:"#111827",border:"#1e293b",accent:"#f59e0b",accentDim:"#78350f",blue:"#3b82f6",green:"#10b981",red:"#ef4444",text:"#f1f5f9",muted:"#64748b",surface:"#1e293b"};
 const T={tasaBase:14.0,tasaHex25:17.5,tasaHex50:21.0,majNoche:2.486,majDomingo:200,dietaFull:55,dietaHalf:25,abatement:0.17,ss:{salud:0.055,comp:0.0074,jubP:0.069,jubD:0.004,compT1:0.0479,conv:0.01125}};
 const h2d=(s)=>{if(!s)return 0;const m=s.toString().match(/(\d+)h(\d+)?/i);if(m)return parseInt(m[1])+(parseInt(m[2]||0))/60;return parseFloat(s)||0;};
