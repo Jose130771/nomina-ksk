@@ -198,7 +198,7 @@ export default function App(){
         {tab==="historial"&&(<div>
           {mesesGuardados.length===0?(<div style={{textAlign:"center",color:C.muted,padding:40,fontSize:13}}>No hay meses guardados aún.<br/>Ve a NÓMINA → 💾 GUARDAR</div>):
           mesSel?(<div>
-            <button onClick={()=>setMesSel(null)} style={{marginBottom:12,padding:"8px 14px",background:C.surface,border:`1px solid ${C.accent}`,borderRadius:8,color:C.accent,fontFamily:"inherit",fontSize:11,cursor:"pointer"}}>← VOLVER AL HISTORIAL</button>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>   <button onClick={()=>setMesSel(null)} style={{flex:1,padding:"8px 14px",background:C.surface,border:`1px solid ${C.accent}`,borderRadius:8,color:C.accent,fontFamily:"inherit",fontSize:11,cursor:"pointer"}}>← VOLVER</button>   <button onClick={async()=>{if(!confirm(`¿Borrar "${mesSel}"?`))return;await fetch("/api/meses",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({mes:mesSel})});await cargarHistorial();setMesSel(null);}} style={{padding:"8px 14px",background:"transparent",border:`1px solid ${C.red}`,borderRadius:8,color:C.red,fontFamily:"inherit",fontSize:11,cursor:"pointer"}}>🗑 BORRAR MES</button> </div>
             {(()=>{const m=historial[mesSel];const n=calcN(m.data);const t=tot(m.dias);return(<div>
               <div style={{background:C.card,border:`1px solid ${C.accent}`,borderRadius:12,padding:16,marginBottom:12}}>
                 <div style={{fontSize:14,color:C.accent,fontWeight:"bold",marginBottom:4}}>{mesSel}</div>
