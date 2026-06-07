@@ -44,7 +44,7 @@ TIPOS DE DESCANSO (CRÍTICO PARA DIETAS):
    - Conduce, no hay pernocta
    - SIN DIETA (vuelve a casa)
 
-EXTRAE SOLO LOS DÍAS ANOTADOS. NO INVENTES DÍAS. SOLO JSON sin markdown:
+REGLAS ESTRICTAS: - SOLO extrae días que están ESCRITOS en la imagen - Si no lees un campo claramente, pon null, NUNCA inventes - NO añadas días en blanco ni días que no tengan anotaciones - SOLO JSON sin markdown:
 {"dias":[{"fecha":"DD/MM/AA","diaSemana":"Sábado","lugar":"ciudad","totKm":533,"totH":"6h50","martillo":"1h58","totalDia":"8h48","THS":"38h25","DS":"35h16","DD":"35h16","tipoDescanso":"bloque","recuperacion":"9h44","dieta":"completa","esDescanso":true}]}`;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
