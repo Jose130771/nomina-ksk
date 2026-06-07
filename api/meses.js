@@ -17,7 +17,14 @@ export default async function handler(req, res) {
     await redis.set(KEY, meses);
     return res.status(200).json({ ok: true });
   }
-
+  if (req.method === 'DELETE') {
+    const { mes } = req.body;
+    if (!mes) return res.status(400).json({ error: 'Falta mes' });
+    const meses = (await redis.get(KEY)) || {};
+    delete meses[mes];
+    await redis.set(KEY, meses);
+    return res.status(200).json({ ok: true });
+  }
   if (req.method === 'GET') {
     const meses = (await redis.get(KEY)) || {};
     return res.status(200).json(meses);
